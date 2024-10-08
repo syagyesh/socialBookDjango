@@ -1,0 +1,48 @@
+name: Trigger auto deployment for officeemp
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ master ]
+    paths:
+    - '**'
+    - '.github/workflows/officeemp-AutoDeployTrigger-6ba691b4-09e9-4038-8bbe-e2c2c21e03fb.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.OFFICEEMP_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.OFFICEEMP_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.OFFICEEMP_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          _dockerfilePathKey_: _dockerfilePath_
+          registryUrl: socialbook.azurecr.io
+          registryUsername: ${{ secrets.OFFICEEMP_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.OFFICEEMP_REGISTRY_PASSWORD }}
+          containerAppName: officeemp
+          resourceGroup: vibencode
+          imageToBuild: socialbook.azurecr.io/officeemp:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+
